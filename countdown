@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Countdown to Date</title>
+<style>
+  body{font-family:sans-serif;padding:20px;text-align:center;background:#f0f0f0;}
+  input, button{padding:6px;margin:5px;}
+  #countdown{font-size:24px;margin-top:20px;}
+</style>
+</head>
+<body>
+<h1>Countdown to Date</h1>
+<input type="datetime-local" id="target">
+<button id="start">Start</button>
+<div id="countdown"></div>
+
+<script>
+let interval=null;
+document.getElementById("start").onclick=()=>{
+  clearInterval(interval);
+  const target=new Date(document.getElementById("target").value).getTime();
+  interval=setInterval(()=>{
+    const now=Date.now();
+    let diff=Math.floor((target-now)/1000);
+    if(diff<=0){ document.getElementById("countdown").textContent="Time reached!"; clearInterval(interval); return; }
+    const days=Math.floor(diff/86400); diff%=86400;
+    const hrs=Math.floor(diff/3600); diff%=3600;
+    const mins=Math.floor(diff/60); const secs=diff%60;
+    document.getElementById("countdown").textContent=
+      `${days} day${days!=1?"s":""}, ${hrs}h ${mins}m ${secs}s`;
+  },1000);
+};
+</script>
+</body>
+</html>
