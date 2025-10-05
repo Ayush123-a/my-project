@@ -1,0 +1,498 @@
+<!-- quiz.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive Quiz App</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8; --success:#10b981;
+      --danger:#ef4444; --glass: rgba(255,255,255,0.03);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:linear-gradient(180deg, #071028 0%, #071827 100%);
+      color:#e6eef6;
+    }
+    .container{
+      width:100%;
+      max-width:880px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border-radius:12px;
+      padding:20px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    header h1{font-size:20px;margin:0}
+    .meta{font-size:13px;color:var(--muted)}
+    main{display:grid;grid-template-columns: 1fr 320px; gap:18px}
+    @media (max-width:900px){ main{grid-template-columns:1fr} .sidebar{order:2} }
+    .card{background:var(--card); padding:16px; border-radius:10px; border:1px solid var(--glass)}
+    .question{font-size:18px;margin-bottom:12px}
+    .answers{display:grid;gap:8px}
+    button.answer{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      padding:10px 12px;
+      border-radius:8px;
+      text-align:left;
+      cursor:pointer;
+      color:inherit;
+      transition:transform .08s ease, background .12s;
+    }
+    button.answer:hover{transform:translateY(-2px)}
+    button.answer.correct{background:linear-gradient(90deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06)); border-color:rgba(16,185,129,0.24)}
+    button.answer.wrong{background:linear-gradient(90deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04)); border-color:rgba(239,68,68,0.22)}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .btn{background:var(--accent); color:#071827; padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+    .btn.secondary{background:transparent;color:var(--accent);border:1px solid rgba(255,255,255,0.06)}
+    .progress-wrap{height:10px;background:rgba(255,255,255,0.04);border-radius:999px;overflow:hidden}
+    .progress{height:100%;background:linear-gradient(90deg,var(--accent),#7c3aed);width:0%}
+    .sidebar .stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,0.02)}
+    .timer{font-weight:700;font-size:18px}
+    .result{font-size:18px}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+    input[type="text"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .highscore-list{max-height:160px;overflow:auto;padding-top:8px}
+    .small{font-size:13px;color:var(--muted)}
+    .center{display:flex;justify-content:center;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="container" role="application" aria-label="Interactive Quiz App">
+    <header>
+      <div>
+        <h1>Interactive Quiz App</h1>
+        <div class="meta">Test your knowledge — multiple choice quiz with timer & highscores</div>
+      </div>
+      <div class="meta small" id="qCount">0 questions</div>
+    </header>
+
+    <main>
+      <section class="card" aria-live="polite">
+        <div id="quizArea">
+          <!-- Question block injected by JS -->
+          <div id="questionBlock">
+            <div class="question" id="questionText">Loading...</div>
+            <div class="answers" id="answersList" role="list"></div>
+
+            <div class="controls">
+              <button class="btn" id="nextBtn" disabled>Next</button>
+              <button class="btn secondary" id="skipBtn">Skip</button>
+              <div style="flex:1"></div>
+              <div class="small">Time left: <span id="timer" class="timer">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="endScreen" style="display:none">
+          <div class="center" style="flex-direction:column;gap:8px;padding:18px">
+            <div class="result" id="finalScore">You scored 0 / 0</div>
+            <div class="small" id="feedbackText">Feedback will appear here.</div>
+            <div style="width:100%;display:flex;gap:8px;margin-top:8px">
+              <input type="text" id="playerName" placeholder="Enter your name to save score" />
+              <button class="btn" id="saveScoreBtn">Save</button>
+            </div>
+            <div style="width:100%;display:flex;gap:8px;margin-top:12px">
+              <button class="btn" id="retryBtn">Retry</button>
+              <button class="btn secondary" id="reviewBtn">Review Answers</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card sidebar" style="height:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div><strong>Quiz Info</strong></div>
+          <div class="small">Mode: timed</div>
+        </div>
+
+        <div class="stat"><div>Progress</div><div id="progressText">0 / 0</div></div>
+        <div style="margin:8px 0" class="progress-wrap" aria-hidden="true"><div class="progress" id="progressBar"></div></div>
+
+        <div class="stat"><div>Score</div><div id="scoreText">0</div></div>
+        <div class="stat"><div>Correct</div><div id="correctText">0</div></div>
+        <div class="stat"><div>Wrong</div><div id="wrongText">0</div></div>
+
+        <div style="margin-top:12px">
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button class="btn" id="startBtn">Start Quiz</button>
+            <button class="btn secondary" id="shuffleBtn">Shuffle Qs</button>
+          </div>
+
+          <div style="margin-top:8px">
+            <label class="small">Per-question time (seconds)</label>
+            <input id="timeLimit" type="number" min="5" max="300" value="20" />
+          </div>
+
+          <div style="margin-top:14px">
+            <strong class="small">Highscores</strong>
+            <div class="highscore-list" id="highscoreList"></div>
+            <div style="margin-top:8px">
+              <button class="btn secondary" id="clearScoresBtn">Clear Scores</button>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </main>
+
+    <div class="footer small">
+      <div>Made with ♥ — Interactive Quiz App</div>
+      <div id="version">v1.0</div>
+    </div>
+  </div>
+
+  <script>
+    /**********************
+     * SAMPLE QUESTIONS
+     * Replace or extend this array with your own questions.
+     * Each question entry: { q: string, choices: [string], a: index_of_correct_choice (0-based) }
+     **********************/
+    const QUESTIONS = [
+      { q: "Which language runs in a web browser?", choices: ["Python", "C++", "JavaScript", "Java"], a: 2 },
+      { q: "What does CSS stand for?", choices: ["Cascading Style Sheets","Computer Style Sheets","Creative Style System","Colorful Style Sheets"], a: 0 },
+      { q: "Which HTML tag is used to define an unordered list?", choices: ["<ol>","<ul>","<li>","<list>"], a: 1 },
+      { q: "Which company developed the React library?", choices: ["Google","Microsoft","Facebook","Apple"], a: 2 },
+      { q: "What does API mean?", choices: ["Application Programming Interface","Application Performance Index","Applied Programming Integration","Advanced Programming Interface"], a: 0 }
+    ];
+
+    // App state
+    let state = {
+      questions: [],
+      currentIndex: 0,
+      score: 0,
+      correct: 0,
+      wrong: 0,
+      timerSeconds: 20,
+      timerId: null,
+      perQuestionTime: 20,
+      answeredThisQuestion: false,
+      reviewMode: false,
+      reviewList: [] // for review: {question, selectedIndex}
+    };
+
+    // DOM refs
+    const qCount = document.getElementById('qCount');
+    const questionText = document.getElementById('questionText');
+    const answersList = document.getElementById('answersList');
+    const nextBtn = document.getElementById('nextBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const startBtn = document.getElementById('startBtn');
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const timeLimitInput = document.getElementById('timeLimit');
+    const timerEl = document.getElementById('timer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const progressCount = document.getElementById('qCount');
+    const scoreText = document.getElementById('scoreText');
+    const correctText = document.getElementById('correctText');
+    const wrongText = document.getElementById('wrongText');
+    const endScreen = document.getElementById('endScreen');
+    const questionBlock = document.getElementById('questionBlock');
+    const finalScore = document.getElementById('finalScore');
+    const feedbackText = document.getElementById('feedbackText');
+    const playerName = document.getElementById('playerName');
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const highscoreList = document.getElementById('highscoreList');
+    const clearScoresBtn = document.getElementById('clearScoresBtn');
+    const retryBtn = document.getElementById('retryBtn');
+    const reviewBtn = document.getElementById('reviewBtn');
+    const qCountDisplay = document.getElementById('qCount');
+
+    // Initialize
+    function init(){
+      // deep copy questions so original array isn't mutated
+      state.questions = QUESTIONS.map(q=>({...q}));
+      qCountDisplay.textContent = `${state.questions.length} questions`;
+      updateStats();
+      renderHighscores();
+    }
+
+    // Shuffle questions
+    function shuffleQuestions(){
+      for(let i = state.questions.length -1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [state.questions[i], state.questions[j]] = [state.questions[j], state.questions[i]];
+      }
+    }
+
+    // Render current question
+    function renderQuestion(){
+      const qObj = state.questions[state.currentIndex];
+      if(!qObj){
+        endQuiz();
+        return;
+      }
+      questionText.textContent = `${state.currentIndex + 1}. ${qObj.q}`;
+      answersList.innerHTML = '';
+      state.answeredThisQuestion = false;
+      nextBtn.disabled = true;
+
+      qObj.choices.forEach((choice, idx)=>{
+        const btn = document.createElement('button');
+        btn.className = 'answer';
+        btn.type = 'button';
+        btn.textContent = choice;
+        btn.setAttribute('data-index', idx);
+        btn.addEventListener('click', ()=> onAnswerSelected(idx, btn));
+        answersList.appendChild(btn);
+      });
+
+      // update progress visuals
+      const total = state.questions.length;
+      const pct = Math.round((state.currentIndex/total)*100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = `${state.currentIndex} / ${total}`;
+      qCount.textContent = `${total} questions`;
+
+      // start timer for this question
+      resetTimer();
+      startTimer();
+      // scroll into view for small screens
+      questionBlock.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+
+    // Handle answer
+    function onAnswerSelected(selectedIndex, btn){
+      if(state.answeredThisQuestion) return;
+      state.answeredThisQuestion = true;
+      stopTimer();
+
+      const qObj = state.questions[state.currentIndex];
+      const isCorrect = selectedIndex === qObj.a;
+      // mark buttons
+      const buttons = answersList.querySelectorAll('button.answer');
+      buttons.forEach(b=>{
+        const idx = Number(b.getAttribute('data-index'));
+        if(idx === qObj.a) b.classList.add('correct');
+        if(idx === selectedIndex && idx !== qObj.a) b.classList.add('wrong');
+        b.disabled = true;
+      });
+
+      // scoring: +10 for correct, -0 for wrong (customizable)
+      if(isCorrect){
+        state.score += 10;
+        state.correct++;
+      } else {
+        state.wrong++;
+      }
+      state.reviewList.push({ question: qObj, selectedIndex });
+
+      updateStats();
+      nextBtn.disabled = false;
+    }
+
+    // Next question
+    function nextQuestion(){
+      state.currentIndex++;
+      if(state.currentIndex >= state.questions.length){
+        endQuiz();
+        return;
+      }
+      renderQuestion();
+    }
+
+    // Skip question (counts as wrong)
+    function skipQuestion(){
+      // mark as wrong with no selection
+      const qObj = state.questions[state.currentIndex];
+      state.wrong++;
+      state.reviewList.push({ question: qObj, selectedIndex: null });
+      updateStats();
+
+      // go to next
+      state.currentIndex++;
+      if(state.currentIndex >= state.questions.length){
+        endQuiz();
+        return;
+      }
+      renderQuestion();
+    }
+
+    // Timer
+    function startTimer(){
+      state.timerSeconds = Number(state.perQuestionTime) || 20;
+      timerEl.textContent = `${state.timerSeconds}s`;
+      state.timerId = setInterval(()=>{
+        state.timerSeconds--;
+        timerEl.textContent = `${state.timerSeconds}s`;
+        if(state.timerSeconds <= 0){
+          clearInterval(state.timerId);
+          // time up: count as wrong and reveal answer
+          handleTimeUp();
+        }
+      }, 1000);
+    }
+    function resetTimer(){
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+    function stopTimer(){
+      clearInterval(state.timerId);
+      state.timerId = null;
+      timerEl.textContent = '--';
+    }
+    function handleTimeUp(){
+      // disable buttons and highlight correct
+      const qObj = state.questions[state.currentIndex];
+      const buttons = answersList.querySelectorAll('button.answer');
+      buttons.forEach(b=>{
+        const idx = Number(b.getAttribute('data-index'));
+        if(idx === qObj.a) b.classList.add('correct');
+        b.disabled = true;
+      });
+      state.wrong++;
+      state.reviewList.push({ question: qObj, selectedIndex: null });
+      updateStats();
+      nextBtn.disabled = false;
+    }
+
+    // End quiz
+    function endQuiz(){
+      stopTimer();
+      questionBlock.style.display = 'none';
+      endScreen.style.display = 'block';
+      finalScore.textContent = `You scored ${state.score} / ${state.questions.length * 10}`;
+      const pct = Math.round((state.score / (state.questions.length*10))*100);
+      if(pct >= 80) feedbackText.textContent = `Excellent — ${pct}%`;
+      else if(pct >= 50) feedbackText.textContent = `Good job — ${pct}%`;
+      else feedbackText.textContent = `Keep practicing — ${pct}%`;
+    }
+
+    // Save highscore
+    function saveHighscore(){
+      const name = (playerName.value || 'Anonymous').trim();
+      const entry = { name, score: state.score, correct: state.correct, total: state.questions.length, ts: Date.now() };
+      const list = JSON.parse(localStorage.getItem('quiz_highscores')||'[]');
+      list.push(entry);
+      list.sort((a,b)=>b.score - a.score || b.correct - a.correct);
+      localStorage.setItem('quiz_highscores', JSON.stringify(list.slice(0,30))); // keep top 30
+      renderHighscores();
+      saveScoreBtn.disabled = true;
+      playerName.value = '';
+      alert('Score saved!');
+    }
+
+    function renderHighscores(){
+      const list = JSON.parse(localStorage.getItem('quiz_highscores')||'[]');
+      if(list.length === 0){
+        highscoreList.innerHTML = '<div class="small">No scores yet. Play and save your score!</div>';
+        return;
+      }
+      highscoreList.innerHTML = '';
+      list.slice(0,10).forEach((h, i)=>{
+        const d = document.createElement('div');
+        d.className = 'small';
+        d.style.padding = '6px 0';
+        d.textContent = `${i+1}. ${h.name} — ${h.score} (${h.correct}/${h.total})`;
+        highscoreList.appendChild(d);
+      });
+    }
+
+    function clearHighscores(){
+      if(!confirm('Clear all saved highscores?')) return;
+      localStorage.removeItem('quiz_highscores');
+      renderHighscores();
+    }
+
+    // Update basic stats in sidebar
+    function updateStats(){
+      scoreText.textContent = state.score;
+      correctText.textContent = state.correct;
+      wrongText.textContent = state.wrong;
+      progressText.textContent = `${state.currentIndex} / ${state.questions.length}`;
+    }
+
+    // Review mode — show all questions with selected answers and correct answers
+    function reviewAnswers(){
+      // build a temporary review screen
+      const reviewWindow = window.open('', '_blank', 'width=800,height=700,scrollbars=yes');
+      const html = [];
+      html.push('<!doctype html><html><head><meta charset="utf-8"><title>Quiz Review</title>');
+      html.push('<style>body{font-family:sans-serif;background:#071022;color:#e7eef6;padding:18px} .q{margin-bottom:14px;padding:12px;border-radius:8px;background:rgba(255,255,255,0.02)} .c{color:#34d399;font-weight:700} .w{color:#fb7185;font-weight:700}</style>');
+      html.push('</head><body>');
+      html.push('<h2>Quiz Review</h2>');
+      state.reviewList.forEach((r, i)=>{
+        const q = r.question;
+        html.push(`<div class="q"><div><strong>${i+1}. ${q.q}</strong></div>`);
+        q.choices.forEach((ch, idx)=>{
+          let mark = '';
+          let cls = '';
+          if(idx === q.a) { mark += ' (correct)'; cls='c'; }
+          if(r.selectedIndex === idx && idx !== q.a){ mark += ' (your choice)'; cls='w'; }
+          if(r.selectedIndex === null && idx === q.a) mark += ' (correct)'; // time up
+          html.push(`<div style="margin-left:8px"><span class="${cls}">${ch}</span>${mark ? ' — '+mark : ''}</div>`);
+        });
+        html.push('</div>');
+      });
+      html.push('</body></html>');
+      reviewWindow.document.write(html.join(''));
+      reviewWindow.document.close();
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', ()=> {
+      // apply per-question time
+      state.perQuestionTime = Number(timeLimitInput.value) || 20;
+      // reset state counters
+      state.currentIndex = 0;
+      state.score = 0;
+      state.correct = 0;
+      state.wrong = 0;
+      state.reviewList = [];
+      state.reviewMode = false;
+      questionBlock.style.display = 'block';
+      endScreen.style.display = 'none';
+      updateStats();
+      renderQuestion();
+    });
+
+    shuffleBtn.addEventListener('click', ()=> {
+      shuffleQuestions();
+      alert('Questions shuffled!');
+      // if quiz already running, restart from beginning
+      state.currentIndex = 0;
+    });
+
+    nextBtn.addEventListener('click', ()=> {
+      nextQuestion();
+    });
+
+    skipBtn.addEventListener('click', ()=> {
+      if(confirm('Skip this question? It will count as wrong.')) skipQuestion();
+    });
+
+    saveScoreBtn.addEventListener('click', saveHighscore);
+    clearScoresBtn.addEventListener('click', clearHighscores);
+    retryBtn.addEventListener('click', ()=> location.reload());
+    reviewBtn.addEventListener('click', reviewAnswers);
+
+    // keyboard accessibility: numbers 1-9 select choices
+    window.addEventListener('keydown', (e)=>{
+      const key = e.key;
+      if(/\d/.test(key) && answersList.children.length > 0 && !state.answeredThisQuestion){
+        const n = Number(key);
+        if(n >= 1 && n <= answersList.children.length){
+          answersList.children[n-1].click();
+        }
+      }
+      if(key === 'Enter' && !nextBtn.disabled){
+        nextBtn.click();
+      }
+    });
+
+    // init app
+    init();
+  </script>
+</body>
+</html>
