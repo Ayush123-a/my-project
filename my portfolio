@@ -1,0 +1,180 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Mail, Download, GitHub, Linkedin } from "lucide-react";
+
+export default function Portfolio() {
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  const projects = [
+    {
+      id: 1,
+      title: "Project One",
+      desc: "A concise 1–2 line description of the project and what it does.",
+      tags: ["React", "UI"],
+      url: "#",
+    },
+    {
+      id: 2,
+      title: "Project Two",
+      desc: "What you built, the main challenge and the tech used.",
+      tags: ["Node", "API"],
+      url: "#",
+    },
+    {
+      id: 3,
+      title: "Project Three",
+      desc: "Short value prop — why it matters.",
+      tags: ["Python", "ML"],
+      url: "#",
+    },
+  ];
+
+  const skills = [
+    "JavaScript",
+    "React",
+    "Node.js",
+    "HTML & CSS",
+    "Data Structures",
+    "Problem Solving",
+  ];
+
+  const filters = ["All", "React", "Node", "Python", "UI"];
+
+  const filteredProjects =
+    activeFilter === "All"
+      ? projects
+      : projects.filter((p) => p.tags.includes(activeFilter));
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-12">
+      <div className="max-w-5xl mx-auto">
+        {/* Header / Hero */}
+        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
+              KR
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-extrabold">Krishna — Software Developer</h1>
+              <p className="text-slate-600 mt-1">Building clean web experiences & solving problems with code.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a href="#contact" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:shadow-lg">
+              <Mail size={16} /> Contact
+            </a>
+            <a href="/resume.pdf" download className="inline-flex items-center gap-2 border border-slate-200 px-4 py-2 rounded-lg">
+              <Download size={16} /> Resume
+            </a>
+          </div>
+        </header>
+
+        <main className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Left column */}
+          <section className="md:col-span-2 space-y-6">
+            {/* About */}
+            <motion.article
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="bg-white rounded-2xl p-6 shadow"
+            >
+              <h2 className="text-2xl font-semibold mb-2">About Me</h2>
+              <p className="text-slate-600 leading-relaxed">
+                Hi — I'm Krishna. I make web apps, study computer science topics deeply, and enjoy turning ideas into
+                working projects. I prefer simple, maintainable code and like to learn new technologies constantly.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="text-sm px-3 py-1 rounded-full bg-slate-100">Open to work</span>
+                <span className="text-sm px-3 py-1 rounded-full bg-slate-100">B.C.A. II Semester</span>
+                <span className="text-sm px-3 py-1 rounded-full bg-slate-100">Java, ML, DS</span>
+              </div>
+            </motion.article>
+
+            {/* Projects */}
+            <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl p-6 shadow">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold">Projects</h2>
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <span className="hidden md:inline">Filter:</span>
+                  <div className="flex gap-2">
+                    {filters.map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setActiveFilter(f)}
+                        className={`px-3 py-1 rounded-full text-sm ${activeFilter === f ? "bg-indigo-600 text-white" : "bg-slate-100"}`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredProjects.map((p) => (
+                  <article key={p.id} className="border border-slate-100 rounded-lg p-4 hover:shadow transition">
+                    <h3 className="font-semibold">{p.title}</h3>
+                    <p className="text-slate-600 text-sm mt-1">{p.desc}</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="flex gap-2">
+                        {p.tags.map((t) => (
+                          <span key={t} className="text-xs px-2 py-1 bg-slate-100 rounded-full">{t}</span>
+                        ))}
+                      </div>
+                      <a href={p.url} className="text-sm text-indigo-600">View →</a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* More sections placeholder */}
+            <motion.section className="bg-white rounded-2xl p-6 shadow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+              <h2 className="text-2xl font-semibold mb-2">Experience & Education</h2>
+              <ul className="list-disc list-inside text-slate-600">
+                <li>Intern / Part-time — Company name — Short bullets about what you did.</li>
+                <li>B.C.A. — College name — Current semester / Year.</li>
+              </ul>
+            </motion.section>
+          </section>
+
+          {/* Right column */}
+          <aside className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow">
+              <h3 className="font-semibold mb-3">Skills</h3>
+              <div className="flex flex-wrap gap-2">
+                {skills.map((s) => (
+                  <span key={s} className="text-sm px-3 py-1 rounded-md bg-slate-100">{s}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow">
+              <h3 className="font-semibold mb-3">Contact</h3>
+              <p className="text-slate-600 text-sm">Email: <a href="mailto:youremail@example.com" className="text-indigo-600">youremail@example.com</a></p>
+              <div className="mt-4 flex gap-3">
+                <a href="#" aria-label="GitHub" className="inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-2">
+                  <GitHub size={16} /> GitHub
+                </a>
+                <a href="#" aria-label="LinkedIn" className="inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-2">
+                  <Linkedin size={16} /> LinkedIn
+                </a>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow text-center">
+              <h3 className="font-semibold mb-2">Quick Actions</h3>
+              <a href="/resume.pdf" download className="block px-4 py-2 border rounded-lg">Download Resume</a>
+            </div>
+          </aside>
+        </main>
+
+        <footer className="mt-12 text-center text-slate-500">
+          <p>Made with ❤️ — Customize this portfolio with your own projects and text.</p>
+        </footer>
+      </div>
+    </div>
+  );
+}
