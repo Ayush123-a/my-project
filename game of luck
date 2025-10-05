@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treasure Hunt Game</title>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(120deg, #0f172a, #1e293b);
+    color: #f1f5f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  h1 { color: #facc15; text-align:center; }
+  #controls { margin-bottom: 10px; text-align:center; }
+  select, button { padding: 8px 14px; margin: 0 5px; font-size: 16px; border-radius: 6px; border: none; cursor: pointer; }
+  #grid {
+    display: grid;
+    gap: 5px;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 500px;
+  }
+  .cell {
+    background: #334155;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 2.5vw; /* responsive font */
+    transition: transform 0.2s, background 0.3s;
+    position: relative;
+    aspect-ratio: 1 / 1; /* square cells */
+  }
+  .cell:hover, .cell:active { background: #475569; transform: scale(1.05); }
+  .miss { background: #dc2626; transform: scale(0.9); }
+  .found { background: #16a34a; color: #f1f5f9; animation: sparkle 1s ease-in-out infinite; }
+
+  @keyframes dig {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+    100% { transform: translateY(0); }
+  }
+
+  @keyframes sparkle {
+    0%, 100% { box-shadow: 0 0 10px #facc15, 0 0 20px #facc15; }
+    50% { box-shadow: 0 0 20px #facc15, 0 0 30px #facc15; }
+  }
+
+  #info { margin-top: 20px; font-size: 18px; text-align:center; word-wrap: break-word; }
+  #leaderboard { margin-top: 20px; text-align: center; }
+  #leaderboard div { margin: 2px 0; font-size: 16px; }
+
+  .confetti {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: #facc15;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    opacity: 0.9;
+    transform: rotate(0deg);
+    border-radius: 50%;
+    animation: confetti-fall 2s linear forwards;
+  }
+
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(500px) rotate(360deg); opacity: 0; }
+  }
+
+  @media (max-width: 600px) {
+    .cell { font-size: 5vw; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Treasure Hunt 🏴‍☠️</h1>
+
+<div id="controls">
+  Level:
+  <select id="levelSelect">
+    <option value="5">Easy (5x5)</option>
+    <option value="7">Medium (7x7)</option>
+    <option value="10">Hard (10x10)</option>
+  </select>
+  <button id="startBtn">Start Game</button>
+</div>
+
+<div id="grid"></div>
+<div id="info">
+  Attempts: <span id="attempts">0</span> | Moves Left: <span id="movesLeft">0</span> | Hint: <span id="hint">-</span>
+</div>
+
+<button id="resetBtn">Restart Game</button>
+
+<div id="leaderboard">
+  <h3>Leaderboard (Best Attempts)</h3>
+  <div id="leaderboardList"></div>
+  <button id="clearLeaderboard">Clear Leaderboard</button>
+</div>
+
+<!-- Audio Elements -->
+<audio id="digSound" src="https://www.soundjay.com/button/beep-07.mp3"></audio>
+<audio id="treasureSound" src="https://www.soundjay.com/misc/success-fanfare-01.mp3"></audio>
+
+<script>
+let gridSize = 5;
+let treasureCell = 0;
+let treasureX = 0;
+let treasureY = 0;
+let attempts = 0;
+let maxMoves = 0;
+const grid = document.getElementById('grid');
+const attemptsEl = document.getElementById('attempts');
+const movesEl = document.getElementById('movesLeft');
+const hintEl = document.getElementById('hint');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const levelSelect = document.getElementById('levelSelect');
+const leaderboardList = document.getElementById('leaderboardList');
+const clearLeaderboardBtn = document.getElementById('clearLeaderboard');
+const digSound = document.getElementById('digSound');
+const treasureSound = document.getElementById('treasureSound');
+
+function createGrid() {
+  grid.innerHTML = '';
+  attempts = 0;
+  attemptsEl.textContent = attempts;
+  hintEl.textContent = '-';
+
+  gridSize = parseInt(levelSelect.value);
+  maxMoves = gridSize * 2;
+  movesEl.textContent = maxMoves;
+
+  treasureCell = Math.floor(Math.random() * (gridSize * gridSize));
+  treasureX = treasureCell % gridSize;
+  treasureY = Math.floor(treasureCell / gridSize);
+
+  grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    cell.dataset.index = i;
+    cell.addEventListener('click', checkCell);
+    cell.addEventListener('touchstart', checkCell);
+    grid.appendChild(cell);
+  }
+}
+
+function checkCell(e) {
+  e.preventDefault(); // prevent mobile tap delay
+  const cell = e.currentTarget;
+  const index = Number(cell.dataset.index);
+  if (cell.classList.contains('found') || cell.classList.contains('miss') || maxMoves <= 0) return;
+
+  attempts++;
+  maxMoves--;
+  attemptsEl.textContent = attempts;
+  movesEl.textContent = maxMoves;
+
+  digSound.currentTime = 0;
+  digSound.play();
+
+  cell.style.animation = 'dig 0.3s';
+  setTimeout(() => { cell.style.animation = ''; }, 300);
+
+  const x = index % gridSize;
+  const y = Math.floor(index / gridSize);
+  const distance = Math.sqrt((x - treasureX)**2 + (y - treasureY)**2);
+
+  if (index === treasureCell) {
+    cell.classList.add('found');
+    cell.textContent = '💰';
+    hintEl.textContent = '🎉 You found the treasure!';
+    treasureSound.currentTime = 0;
+    treasureSound.play();
+    spawnConfetti();
+    alert(`🎉 Treasure found in ${attempts} attempts!`);
+    saveLeaderboard(attempts);
+    revealTreasure();
+  } else {
+    cell.classList.add('miss');
+    cell.textContent = '❌';
+    if (distance <= 1.5) hintEl.textContent = '🔥 Hot!';
+    else if (distance <= 3) hintEl.textContent = '🌡 Warm';
+    else hintEl.textContent = '❄ Cold';
+  }
+
+  if (maxMoves <= 0 && index !== treasureCell) {
+    alert("💀 Game Over! Out of moves.");
+    revealTreasure();
+  }
+}
+
+function spawnConfetti() {
+  const colors = ['#facc15','#38bdf8','#ef4444','#10b981','#f472b6','#a78bfa'];
+  for(let i=0;i<100;i++){
+    const confetti = document.createElement('div');
+    confetti.classList.add('confetti');
+    confetti.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+    confetti.style.left = Math.random() * window.innerWidth + 'px';
+    confetti.style.top = Math.random() * -50 + 'px';
+    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+    document.body.appendChild(confetti);
+    setTimeout(() => { confetti.remove(); }, 4000);
+  }
+}
+
+function revealTreasure() {
+  const cells = document.querySelectorAll('.cell');
+  cells[treasureCell].classList.add('found');
+  cells[treasureCell].textContent = '💰';
+  updateLeaderboardDisplay();
+}
+
+function saveLeaderboard(score) {
+  const level = `${gridSize}x${gridSize}`;
+  let leaderboard = JSON.parse(localStorage.getItem('treasure_leaderboard') || '{}');
+  if (!leaderboard[level] || leaderboard[level] > score) {
+    leaderboard[level] = score;
+    localStorage.setItem('treasure_leaderboard', JSON.stringify(leaderboard));
+  }
+  updateLeaderboardDisplay();
+}
+
+function updateLeaderboardDisplay() {
+  const leaderboard = JSON.parse(localStorage.getItem('treasure_leaderboard') || '{}');
+  leaderboardList.innerHTML = '';
+  for (const [level, score] of Object.entries(leaderboard)) {
+    const div = document.createElement('div');
+    div.textContent = `${level}: ${score} attempt(s)`;
+    leaderboardList.appendChild(div);
+  }
+}
+
+startBtn.addEventListener('click', createGrid);
+resetBtn.addEventListener('click', createGrid);
+clearLeaderboardBtn.addEventListener('click', () => {
+  localStorage.removeItem('treasure_leaderboard');
+  updateLeaderboardDisplay();
+});
+
+createGrid();
+updateLeaderboardDisplay();
+</script>
+
+</body>
+</html>
