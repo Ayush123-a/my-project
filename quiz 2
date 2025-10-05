@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Quiz App</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(120deg, #0f172a, #1e293b);
+      color: #e2e8f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 90%;
+      max-width: 700px;
+      background: #1e293b;
+      padding: 20px 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.4);
+    }
+    h1 { text-align: center; color: #38bdf8; }
+    .question { font-size: 18px; margin-bottom: 10px; }
+    .answers button {
+      display: block;
+      width: 100%;
+      background: #334155;
+      border: none;
+      margin: 6px 0;
+      padding: 10px;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .answers button:hover { background: #475569; }
+    .answers button.correct { background: #16a34a; }
+    .answers button.wrong { background: #dc2626; }
+    .controls { display: flex; justify-content: space-between; margin-top: 15px; }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 15px;
+      font-weight: bold;
+    }
+    .next { background: #38bdf8; color: #0f172a; }
+    .skip { background: transparent; border: 1px solid #38bdf8; color: #38bdf8; }
+    .timer { font-weight: bold; }
+    .end-screen { text-align: center; display: none; }
+    .review { text-align: left; margin-top: 20px; border-top: 1px solid #475569; padding-top: 10px; }
+    .correct-text { color: #16a34a; }
+    .wrong-text { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Interactive Quiz App</h1>
+
+    <div id="quizBox">
+      <div class="question" id="questionText">Press Start to Begin</div>
+      <div class="answers" id="answersList"></div>
+      <div class="controls">
+        <button class="skip" id="skipBtn">Skip</button>
+        <div class="timer">⏱ <span id="timer">--</span></div>
+        <button class="next" id="nextBtn" disabled>Next</button>
+      </div>
+    </div>
+
+    <div class="end-screen" id="endScreen">
+      <h2>Your Score: <span id="score"></span></h2>
+      <p id="feedback"></p>
+      <button class="next" id="restartBtn">Restart Quiz</button>
+      <div class="review" id="review"></div>
+    </div>
+
+    <div class="controls" style="margin-top:15px;justify-content:center;">
+      <button class="next" id="startBtn">Start Quiz</button>
+    </div>
+  </div>
+
+  <script>
+    const QUESTIONS = [
+      { q: "Which language runs directly in the browser?", choices: ["Python", "C++", "JavaScript", "C"], a: 2 },
+      { q: "What does HTML stand for?", choices: ["Hyper Trainer Marking Language", "Hyper Text Markup Language", "Hyper Text Marketing Language", "High Text Markup Language"], a: 1 },
+      { q: "Which HTML tag is used for inserting an image?", choices: ["<img>", "<image>", "<picture>", "<src>"], a: 0 },
+      { q: "What does CSS stand for?", choices: ["Colorful Style Sheets", "Creative Style Sheets", "Cascading Style Sheets", "Computer Style Sheets"], a: 2 },
+      { q: "Which property is used to change text color in CSS?", choices: ["font-color", "text-color", "color", "text-style"], a: 2 },
+      { q: "Which company developed JavaScript?", choices: ["Google", "Microsoft", "Netscape", "Apple"], a: 2 },
+      { q: "Which HTML tag is used to define a hyperlink?", choices: ["<a>", "<link>", "<href>", "<url>"], a: 0 },
+      { q: "Which symbol is used for comments in CSS?", choices: ["// comment", "<!-- comment -->", "/* comment */", "# comment"], a: 2 },
+      { q: "Which HTML attribute specifies an alternate text for an image?", choices: ["title", "alt", "src", "name"], a: 1 },
+      { q: "Which tag is used to define an unordered list?", choices: ["<ol>", "<li>", "<ul>", "<list>"], a: 2 },
+      { q: "Which keyword is used to define a function in Python?", choices: ["func", "define", "def", "function"], a: 2 },
+      { q: "What is the correct syntax to print a message in Java?", choices: ["echo('Hello');", "print('Hello');", "System.out.println('Hello');", "printf('Hello');"], a: 2 },
+      { q: "In C, which header file is needed for input/output functions?", choices: ["math.h", "string.h", "stdio.h", "stdlib.h"], a: 2 },
+      { q: "Which operator is used to compare two values in JavaScript?", choices: ["=", "==", "===", "<>"], a: 2 },
+      { q: "Which of these is a looping structure?", choices: ["if", "while", "switch", "break"], a: 1 },
+      { q: "What does CPU stand for?", choices: ["Central Process Unit", "Central Processing Unit", "Computer Personal Unit", "Central Peripheral Unit"], a: 1 },
+      { q: "Which part of the computer performs calculations?", choices: ["CPU", "RAM", "ROM", "Monitor"], a: 0 },
+      { q: "Which memory is volatile?", choices: ["ROM", "Cache", "RAM", "Hard Disk"], a: 2 },
+      { q: "Which device is an input device?", choices: ["Printer", "Monitor", "Keyboard", "Speaker"], a: 2 },
+      { q: "What does GUI stand for?", choices: ["Graphical User Interface", "General Utility Interface", "Graph Unit Interface", "Graphics User Interaction"], a: 0 }
+    ];
+
+    let questions = [];
+    let current = 0;
+    let score = 0;
+    let correct = 0;
+    let wrong = 0;
+    let timer;
+    let timeLeft = 20;
+    let reviewList = [];
+
+    const questionText = document.getElementById('questionText');
+    const answersList = document.getElementById('answersList');
+    const nextBtn = document.getElementById('nextBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const timerEl = document.getElementById('timer');
+    const startBtn = document.getElementById('startBtn');
+    const quizBox = document.getElementById('quizBox');
+    const endScreen = document.getElementById('endScreen');
+    const scoreEl = document.getElementById('score');
+    const feedback = document.getElementById('feedback');
+    const reviewDiv = document.getElementById('review');
+    const restartBtn = document.getElementById('restartBtn');
+
+    function startQuiz() {
+      // Randomly select 10 questions
+      questions = QUESTIONS.sort(() => 0.5 - Math.random()).slice(0, 10);
+      current = 0; score = 0; correct = 0; wrong = 0; reviewList = [];
+      startBtn.style.display = "none";
+      quizBox.style.display = "block";
+      endScreen.style.display = "none";
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      if (current >= questions.length) return endQuiz();
+      const q = questions[current];
+      questionText.textContent = `${current + 1}. ${q.q}`;
+      answersList.innerHTML = '';
+      q.choices.forEach((choice, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = choice;
+        btn.onclick = () => selectAnswer(i, q.a, btn);
+        answersList.appendChild(btn);
+      });
+      nextBtn.disabled = true;
+      resetTimer();
+    }
+
+    function selectAnswer(i, correctIdx, btn) {
+      stopTimer();
+      const buttons = answersList.querySelectorAll('button');
+      buttons.forEach((b, idx) => {
+        b.disabled = true;
+        if (idx === correctIdx) b.classList.add('correct');
+        else if (idx === i) b.classList.add('wrong');
+      });
+      if (i === correctIdx) { score += 10; correct++; reviewList.push({q: questions[current].q, result: "✔️ Correct"}); }
+      else { wrong++; reviewList.push({q: questions[current].q, result: "❌ Wrong"}); }
+      nextBtn.disabled = false;
+    }
+
+    function nextQuestion() {
+      current++;
+      if (current < questions.length) renderQuestion();
+      else endQuiz();
+    }
+
+    function skipQuestion() {
+      wrong++;
+      reviewList.push({q: questions[current].q, result: "⏭️ Skipped"});
+      nextQuestion();
+    }
+
+    function endQuiz() {
+      stopTimer();
+      quizBox.style.display = "none";
+      endScreen.style.display = "block";
+      scoreEl.textContent = `${score} / ${questions.length * 10}`;
+      feedback.textContent = `Correct: ${correct}, Wrong: ${wrong}, Skipped: ${questions.length - (correct + wrong)}`;
+      reviewDiv.innerHTML = "<h3>Review:</h3>" + reviewList.map(r => 
+        `<p><b>${r.q}</b> <span class="${r.result.includes('Correct') ? 'correct-text' : r.result.includes('Wrong') ? 'wrong-text' : ''}">${r.result}</span></p>`
+      ).join('');
+      startBtn.style.display = "block";
+    }
+
+    function resetTimer() {
+      timeLeft = 20;
+      timerEl.textContent = `${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = `${timeLeft}s`;
+        if (timeLeft <= 0) { stopTimer(); skipQuestion(); }
+      }, 1000);
+    }
+
+    function stopTimer() { clearInterval(timer); }
+
+    nextBtn.onclick = nextQuestion;
+    skipBtn.onclick = skipQuestion;
+    startBtn.onclick = startQuiz;
+    restartBtn.onclick = startQuiz;
+  </script>
+</body>
+</html>
